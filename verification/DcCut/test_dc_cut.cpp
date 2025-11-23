@@ -71,34 +71,22 @@ int main()
 
 #include <gtest/gtest.h>
 
-TEST(DcCut, Case1)
+static void CheckCase(uint16_t idx)
 {
     double rmse = 0.0;
-    ASSERT_TRUE(run_dc_cut_case("dc_cut_case1", rmse)) << "RMSE=" << rmse;
+    std::string name = "dc_cut_case" + std::to_string(idx);
+
+    bool ok = run_dc_cut_case(name, rmse);
+
+    std::cout << "[INFO] " << name << " RMSE=" << rmse << std::endl;
+
+    EXPECT_TRUE(ok) << "RMSE=" << rmse;
 }
 
-TEST(DcCut, Case2)
-{
-    double rmse = 0.0;
-    ASSERT_TRUE(run_dc_cut_case("dc_cut_case2", rmse)) << "RMSE=" << rmse;
-}
-
-TEST(DcCut, Case3)
-{
-    double rmse = 0.0;
-    ASSERT_TRUE(run_dc_cut_case("dc_cut_case3", rmse)) << "RMSE=" << rmse;
-}
-
-TEST(DcCut, Case4)
-{
-    double rmse = 0.0;
-    ASSERT_TRUE(run_dc_cut_case("dc_cut_case4", rmse)) << "RMSE=" << rmse;
-}
-
-TEST(DcCut, Case5)
-{
-    double rmse = 0.0;
-    ASSERT_TRUE(run_dc_cut_case("dc_cut_case5", rmse)) << "RMSE=" << rmse;
-}
+TEST(DcCut, Case1) { CheckCase(1); }
+TEST(DcCut, Case2) { CheckCase(2); }
+TEST(DcCut, Case3) { CheckCase(3); }
+TEST(DcCut, Case4) { CheckCase(4); }
+TEST(DcCut, Case5) { CheckCase(5); }
 
 #endif // USE_GTEST
