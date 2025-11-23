@@ -1,0 +1,38 @@
+name: C++ HLS CSim Tests
+
+on:
+  push:
+    branches: [ main, try-gtest ]
+  pull_request:
+    branches: [ main, try-gtest ]
+
+jobs:
+  build-and-test-dccut:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++
+
+      # DcCut 用 CMake Configure
+      - name: Configure DcCut
+        run: |
+          cmake -S verification/DcCut \
+                -B verification/DcCut/build \
+                -G Ninja \
+                -DCMAKE_BUILD_TYPE=Release
+
+      # DcCut 用ビルド
+      - name: Build DcCut tests
+        run: |
+          cmake --build verification/DcCut/build --config Release
+
+      # DcCut のテスト実行
+      - name: Run DcCut tests
+        run: |
+          ctest --test-dir verification/DcCut/build --output-on-failure
