@@ -35,4 +35,4 @@ jobs:
       # DcCut のテスト実行
       - name: Run DcCut tests
         run: |
-          ctest --test-dir verification/DcCut/build --output-on-failure
+          ctest --test-dir verification/DcCut/build --output-on-failure -V
