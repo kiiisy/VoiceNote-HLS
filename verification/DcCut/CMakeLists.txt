@@ -49,9 +49,11 @@ target_link_libraries(test_dccut
         GTest::gtest_main
 )
 
-# GTestモードを有効化
+# defineの定義/変更
 target_compile_definitions(test_dccut
-    PRIVATE USE_GTEST
+    PRIVATE
+      USE_GTEST
+      PROJECT_SOURCE_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/../../\"
 )
 
 # ===========================
