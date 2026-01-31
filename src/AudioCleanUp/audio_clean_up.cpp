@@ -2,6 +2,8 @@
 
 using namespace audio;
 
+namespace {
+
 inline AxisChannel axis_to_stream(const axis_channel_t &stream)
 {
     AxisChannel tmp{};
@@ -17,6 +19,7 @@ inline axis_channel_t stream_to_axis(const AxisChannel &tmp)
     stream.id   = tmp.id;
     return stream;
 }
+}  // namespace
 
 void audio_clean_up(axis_port_t &s_axis, axis_port_t &m_axis, float dc_a_coef, bool dc_pass, sample_t_ng th_open_amp,
                     sample_t_ng th_close_amp, coef_t_ng a_attack, coef_t_ng a_release, coef_t_ng b_attack,

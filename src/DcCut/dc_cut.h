@@ -1,9 +1,11 @@
 #pragma once
-#include "../Common/common.h"
+
 #include <cstddef>
 #include <cstdint>
 
-// DCブロック（1次HPF）
+#include "../Common/common.h"
+
+// DCブロック（1次ハイパス）
 struct DcBlock
 {
     audio::coef_t_ng   a_coeff;  // フィルタ係数 a

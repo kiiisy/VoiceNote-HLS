@@ -1,9 +1,11 @@
 #pragma once
-#include "../Common/common.h"
+
 #include <cstddef>
 #include <cstdint>
 
-// ノイズゲートステート
+#include "../Common/common.h"
+
+// ノイズゲート（ランタイム状態とパラメータは分けた方がいい気が）
 struct NoiseGateState
 {
     // ランタイム状態
@@ -11,8 +13,10 @@ struct NoiseGateState
     audio::coef_t_ng gainR;
     bool             gate_openL;
     bool             gate_openR;
+};
 
-    // パラメータ（ホストから渡されるものをそのまま持つ）
+struct NoiseGateParam
+{
     audio::sample_t_ng th_open_amp;   // 開ゲートしきい値（PCMスケール）
     audio::sample_t_ng th_close_amp;  // 閉ゲートしきい値（PCMスケール）
     audio::coef_t_ng   a_attack;

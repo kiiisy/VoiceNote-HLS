@@ -2,8 +2,8 @@
 
 using namespace audio;
 
-// 符号付き16bitへの飽和
-static ap_int<AUDIO_SAMPLE_WIDTH> clip(sample_t_dc pcm_y)
+namespace {
+ap_int<AUDIO_SAMPLE_WIDTH> clip(sample_t_dc pcm_y)
 {
     const sample_t_dc maxv = sample_t_dc(AUDIO_16BIT_MAX);
     const sample_t_dc minv = sample_t_dc(AUDIO_16BIT_MIN);
@@ -22,7 +22,7 @@ static ap_int<AUDIO_SAMPLE_WIDTH> clip(sample_t_dc pcm_y)
     return (ap_int<AUDIO_SAMPLE_WIDTH>)r;
 }
 
-static void core(DcBlock &st, const AxisChannel *in_buf, AxisChannel *out_buf, bool dc_pass)
+void core(DcBlock &st, const AxisChannel *in_buf, AxisChannel *out_buf, bool dc_pass)
 {
     coef_t_ng   a_coeff = st.a_coeff;
     sample_t_dc in_l    = st.in_l;
@@ -72,6 +72,7 @@ static void core(DcBlock &st, const AxisChannel *in_buf, AxisChannel *out_buf, b
         }
     }
 }
+}  // namespace
 
 void dc_cut(axis_stream_t &s_axis, axis_stream_t &m_axis, float a_coef, bool dc_pass)
 {
@@ -80,7 +81,6 @@ void dc_cut(axis_stream_t &s_axis, axis_stream_t &m_axis, float a_coef, bool dc_
 #pragma HLS INTERFACE s_axilite port = a_coef bundle = dc
 #pragma HLS INTERFACE s_axilite port = dc_pass bundle = dc
 #pragma HLS INTERFACE s_axilite                port = return bundle = dc
-    //#pragma HLS DATAFLOW
 
     static DcBlock st{coef_t_ng(0), sample_t_dc(0), sample_t_dc(0), sample_t_dc(0), sample_t_dc(0)};
 
@@ -88,8 +88,6 @@ void dc_cut(axis_stream_t &s_axis, axis_stream_t &m_axis, float a_coef, bool dc_
 
     AxisChannel in_buf[AUDIO_CHANNEL];
     AxisChannel out_buf[AUDIO_CHANNEL];
-//#pragma HLS BIND_STORAGE variable = in_buf type = ram_s2p impl = bram
-//#pragma HLS BIND_STORAGE variable = out_buf type = ram_s2p impl = bram
 #pragma HLS BIND_STORAGE variable = in_buf type = fifo impl = lutram
 #pragma HLS BIND_STORAGE variable = out_buf type = fifo impl = lutram
 

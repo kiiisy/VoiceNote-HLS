@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <fstream>
+#include <iostream>
 #include <stdexcept>
 
 #ifndef PROJECT_SOURCE_DIR
@@ -50,15 +51,15 @@ std::string output_path(const std::string &module, const std::string &filename)
     return p;
 }
 
-std::vector<float> load_csv(const std::string &path)
+std::vector<int16_t> load_csv(const std::string &path)
 {
-    std::vector<float> v;
-    std::ifstream      ifs(path.c_str());
+    std::vector<int16_t> v;
+    std::ifstream        ifs(path.c_str());
     if (!ifs) {
         throw std::runtime_error("Failed to open CSV: " + path);
     }
 
-    float x;
+    int16_t x;
     while (ifs >> x) {
         v.push_back(x);
     }
@@ -66,7 +67,7 @@ std::vector<float> load_csv(const std::string &path)
     return v;
 }
 
-void write_csv(const std::string &path, const std::vector<float> &v)
+void write_csv(const std::string &path, const std::vector<int16_t> &v)
 {
     // HLS 環境だとディレクトリ作成が面倒なので、
     // ひとまず「パスが存在している前提」でファイルだけ開く実装にしておく。
@@ -78,12 +79,12 @@ void write_csv(const std::string &path, const std::vector<float> &v)
     ofs.setf(std::ios::fixed);
     ofs.precision(10);
 
-    for (float x : v) {
+    for (int16_t x : v) {
         ofs << x << "\n";
     }
 }
 
-double rmse(const std::vector<float> &a, const std::vector<float> &b)
+double rmse(const std::vector<int16_t> &a, const std::vector<int16_t> &b)
 {
     if (a.size() != b.size()) {
         throw std::runtime_error("rmse: size mismatch");
@@ -93,14 +94,37 @@ double rmse(const std::vector<float> &a, const std::vector<float> &b)
     }
 
     double mse = 0.0;
+
     for (std::size_t i = 0; i < a.size(); ++i) {
-        double d = static_cast<double>(a[i]) - static_cast<double>(b[i]);
+        // Q15 → float [-1,1)
+        double af = static_cast<double>(a[i]) / 32768.0;
+        double bf = static_cast<double>(b[i]) / 32768.0;
+
+        double d = af - bf;
         mse += d * d;
     }
 
     mse /= static_cast<double>(a.size());
 
     return std::sqrt(mse);
+}
+
+int32_t max_abs_diff(const std::vector<int16_t> &a, const std::vector<int16_t> &b)
+{
+    if (a.size() != b.size()) {
+        throw std::runtime_error("max_abs_diff: size mismatch");
+    }
+
+    int32_t maxd = 0;
+    for (std::size_t i = 0; i < a.size(); ++i) {
+        int32_t d = std::abs(int(a[i]) - int(b[i]));
+        if (d > maxd) {
+            //std::cout << a[i] << b[i] << std::endl;
+            maxd = d;
+        }
+    }
+
+    return maxd;
 }
 
 }  // namespace testutil

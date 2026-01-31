@@ -37,10 +37,13 @@ std::string golden_path(const std::string &module, const std::string &filename);
 std::string output_path(const std::string &module, const std::string &filename);
 
 // CSV I/O
-std::vector<float> load_csv(const std::string &path);
-void               write_csv(const std::string &path, const std::vector<float> &v);
+std::vector<int16_t> load_csv(const std::string &path);
+void                 write_csv(const std::string &path, const std::vector<int16_t> &v);
 
 // RMSE計算
-double rmse(const std::vector<float> &a, const std::vector<float> &b);
+double rmse(const std::vector<int16_t> &a, const std::vector<int16_t> &b);
+
+// 整数の最大差分
+int32_t max_abs_diff(const std::vector<int16_t> &a, const std::vector<int16_t> &b);
 
 }  // namespace testutil

@@ -1,63 +1,54 @@
 #include "noise_gate.h"
 
-#ifdef __SYNTHESIS__
-#include "hls_math.h"
-#else
-#include <cmath>
-#endif
-
 using namespace audio;
 
-static ap_int<AUDIO_SAMPLE_WIDTH> clip(sample_t_ng y)
-{
-    const sample_t_ng maxv = sample_t_ng(32767);
-    const sample_t_ng minv = sample_t_ng(-32768);
+namespace {
 
-    if (y > maxv) {
-        y = maxv;
-    } else if (y < minv) {
-        y = minv;
+ap_int<AUDIO_SAMPLE_WIDTH> clip(sample_t_ng pcm_y)
+{
+    const sample_t_ng maxv = sample_t_ng(AUDIO_16BIT_MAX);
+    const sample_t_ng minv = sample_t_ng(AUDIO_16BIT_MIN);
+
+    // クリップ
+    if (pcm_y > maxv) {
+        pcm_y = maxv;
+    } else if (pcm_y < minv) {
+        pcm_y = minv;
     }
 
-    sample_t_ng r = (y >= 0) ? (y + sample_t_ng(0.5)) : (y - sample_t_ng(0.5));
+    // 丸め込み
+    sample_t_ng r = (pcm_y >= 0) ? (pcm_y + sample_t_ng(0.5)) : (pcm_y - sample_t_ng(0.5));
+
+    // 下位整数部を取り出す
     return (ap_int<AUDIO_SAMPLE_WIDTH>)r;
 }
 
-static void init_state(NoiseGateState &st)
-{
-    // ゲイン & ゲートは 0 / false に初期化
-    st.gainL      = coef_t_ng(0);
-    st.gainR      = coef_t_ng(0);
-    st.gate_openL = false;
-    st.gate_openR = false;
-}
-
-static void core(NoiseGateState &st, const AxisFrame *in_buf, AxisFrame *out_buf, bool ng_pass)
+void core(NoiseGateState &st, NoiseGateParam &param, const AxisChannel *in_buf, AxisChannel *out_buf, bool ng_pass)
 {
     coef_t_ng gainL = st.gainL;
     coef_t_ng gainR = st.gainR;
     bool      gateL = st.gate_openL;
     bool      gateR = st.gate_openR;
 
-    sample_t_ng th_open_amp  = st.th_open_amp;
-    sample_t_ng th_close_amp = st.th_close_amp;
-    coef_t_ng   a_att        = st.a_attack;
-    coef_t_ng   a_rel        = st.a_release;
-    coef_t_ng   b_att        = st.b_attack;
-    coef_t_ng   b_rel        = st.b_release;
+    sample_t_ng th_open_amp  = param.th_open_amp;
+    sample_t_ng th_close_amp = param.th_close_amp;
+    coef_t_ng   a_att        = param.a_attack;
+    coef_t_ng   a_rel        = param.a_release;
+    coef_t_ng   b_att        = param.b_attack;
+    coef_t_ng   b_rel        = param.b_release;
 
     if (!ng_pass) {
     MAIN_LOOP:
         for (uint16_t i = 0; i < AUDIO_CHANNEL; ++i) {
 #pragma HLS PIPELINE II = 5
 
-            AxisFrame sfin = in_buf[i];
+            AxisChannel in_channel = in_buf[i];
 
-            ap_int<AUDIO_SAMPLE_WIDTH> s_in  = sfin.data.range(AUDIO_SAMPLE_MSB, AUDIO_SAMPLE_LSB);
-            sample_t_ng                x     = sample_t_ng(s_in);
-            sample_t_ng                level = (x >= 0) ? x : sample_t_ng(-x);
+            ap_int<AUDIO_SAMPLE_WIDTH> pcm_in = in_channel.data.range(AUDIO_SAMPLE_MSB, AUDIO_SAMPLE_LSB);
+            sample_t_ng                x      = sample_t_ng(pcm_in);
+            sample_t_ng                level  = (x >= 0) ? x : sample_t_ng(-x);
 
-            bool      isL    = (sfin.id == 0);
+            bool      isL    = (in_channel.id == 0);
             coef_t_ng gain   = isL ? gainL : gainR;
             bool      gateon = isL ? gateL : gateR;
 
@@ -86,10 +77,10 @@ static void core(NoiseGateState &st, const AxisFrame *in_buf, AxisFrame *out_buf
                 gateR = gateon;
             }
 
-            sample_t_ng y                                        = sample_t_ng(gain * x);
-            AxisFrame   sfout                                    = sfin;
-            sfout.data.range(AUDIO_SAMPLE_MSB, AUDIO_SAMPLE_LSB) = clip(y);
-            out_buf[i]                                           = sfout;
+            sample_t_ng y                                              = sample_t_ng(gain * x);
+            AxisChannel out_channel                                    = in_channel;
+            out_channel.data.range(AUDIO_SAMPLE_MSB, AUDIO_SAMPLE_LSB) = clip(y);
+            out_buf[i]                                                 = out_channel;
         }
 
         st.gainL      = gainL;
@@ -104,6 +95,7 @@ static void core(NoiseGateState &st, const AxisFrame *in_buf, AxisFrame *out_buf
         }
     }
 }
+}  // namespace
 
 void noise_gate(axis_stream_t &s_axis, axis_stream_t &m_axis, sample_t_ng th_open_amp, sample_t_ng th_close_amp,
                 coef_t_ng a_attack, coef_t_ng a_release, coef_t_ng b_attack, coef_t_ng b_release, bool ng_pass)
@@ -119,29 +111,22 @@ void noise_gate(axis_stream_t &s_axis, axis_stream_t &m_axis, sample_t_ng th_ope
 #pragma HLS INTERFACE s_axilite port = ng_pass bundle = ng
 #pragma HLS INTERFACE s_axilite                port = return bundle = ng
 
-    static NoiseGateState st;
-    static bool           inited = false;
+    static NoiseGateState st{coef_t_ng(0), coef_t_ng(0), false, false};
+    static NoiseGateParam param;
 
-    if (!inited) {
-        init_state(st);
-        inited = true;
-    }
+    param.th_open_amp  = th_open_amp;
+    param.th_close_amp = th_close_amp;
+    param.a_attack     = a_attack;
+    param.a_release    = a_release;
+    param.b_attack     = b_attack;
+    param.b_release    = b_release;
 
-    st.th_open_amp  = th_open_amp;
-    st.th_close_amp = th_close_amp;
-    st.a_attack     = a_attack;
-    st.a_release    = a_release;
-    st.b_attack     = b_attack;
-    st.b_release    = b_release;
+    AxisChannel in_buf[AUDIO_CHANNEL];
+    AxisChannel out_buf[AUDIO_CHANNEL];
+#pragma HLS BIND_STORAGE variable = in_buf type = fifo impl = lutram
+#pragma HLS BIND_STORAGE variable = out_buf type = fifo impl = lutram
 
-    static AxisFrame in_buf[AUDIO_CHANNEL];
-    static AxisFrame out_buf[AUDIO_CHANNEL];
-//#pragma HLS BIND_STORAGE variable = in_buf type = ram_1p impl = bram
-//#pragma HLS BIND_STORAGE variable = out_buf type = ram_1p impl = bram
-#pragma HLS BIND_STORAGE variable = in_buf type = fifo impl = srl
-#pragma HLS BIND_STORAGE variable = out_buf type = fifo impl = srl
-
-    axis_read_block<AUDIO_CHANNEL>(s_axis, in_buf);
-    core(st, in_buf, out_buf, ng_pass);
-    axis_write_block<AUDIO_CHANNEL>(out_buf, m_axis);
+    read_stream_buf<AUDIO_CHANNEL>(s_axis, in_buf);
+    core(st, param, in_buf, out_buf, ng_pass);
+    write_stream_buf<AUDIO_CHANNEL>(out_buf, m_axis);
 }
