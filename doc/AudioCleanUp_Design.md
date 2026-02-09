@@ -74,7 +74,8 @@ Vitis HLSの合成レポートおよびシステム要件に基づくタイミ�
 - **システムクロック ($F_{clk}$)**: 100 MHz (周期 $T_{clk} = 10 \text{ns}$)
 - **サンプリングレート ($F_s$)**: 48 kHz (周期 $T_s \approx 20.83 \text{µs}$)
 - **1サンプルあたりの利用可能サイクル数**:
-  $$ \frac{100 \times 10^6 \text{ Hz}}{48 \times 10^3 \text{ Hz}} \approx 2083 \text{ cycles} $$
+
+$$ \frac{100 \times 10^6 \text{ Hz}}{48 \times 10^3 \text{ Hz}} \approx 2083 \text{ cycles} $$
 
 #### 5-2-1. HLS合成結果
 ![合成結果](./img/合成結果.png)
@@ -142,6 +143,7 @@ Vitis HLSの合成レポートおよびシステム要件に基づくタイミ�
 
 #### 7-1-3. アルゴリズム
 以下の差分方程式に基づき処理を行う。
+
 $$ y[n] = x[n] - x[n-1] + a \times y[n-1] $$
 
 - `x[n]` : 入力サンプル
@@ -179,8 +181,10 @@ DC Cutの内部演算には以下の固定小数点型を使用する。
     -   `level <= th_close_amp` $\rightarrow$ Gate Close (Target=0.0)
     -   中間値の場合は前回の状態を維持
 3.  **ゲイン更新 (1次遅れ)**:
-    $$ G[n] = \alpha \times G[n-1] + (1-\alpha) \times Target $$
-    -   $\alpha$ はAttack/Release状態で切り替え
+
+$$ G[n] = \alpha \times G[n-1] + (1-\alpha) \times Target $$
+
+  -  $\alpha$ はAttack/Release状態で切り替え
 4.  **出力**: `output = input * G[n]`
 
 #### 7-2-4. 内部演算精度
